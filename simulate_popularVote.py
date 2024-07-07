@@ -1,10 +1,15 @@
-# System based on seats being distributed based on popular vote share
+# System based on seats being distributed based on popular vote share. 
+# Each voter selects one candidate/
 
 import random
 import time
 from parties import EnglandParties, ScotlandParties, WalesParties, NIrelandParties
 import pandas as pd
 from typing import Literal
+
+VOTES_PER_CONSTITUENCY = 70000 # assumption
+TURNOUT_LOWER_BOUND = 0.5
+TURNOUT_UPPER_BOUND = 0.88
 
 def _generateConstituencies(filename: str, nation: Literal["England", "Scotland", "Wales", "Northern_Ireland"]):
     df = pd.read_csv(filename)
@@ -29,7 +34,6 @@ wales_constituencies = _generateConstituencies("resources/constituencies.csv", "
 nIreland_constituencies = _generateConstituencies("resources/constituencies.csv", "Northern_Ireland")
 
 NUMBER_CONSTITUENCIES = len(england_constituencies) + len(scotland_constituencies) + len(wales_constituencies) + len(nIreland_constituencies)
-VOTES_PER_CONSTITUENCY = 70000 # assumption
 
 def _generateWeights(partyQuantity: int):
     weightSum = 0
@@ -48,47 +52,50 @@ def _generateVote(parties: str, weighting: float) -> str:
 
 def _generateSeats(votes: int, total_votes: int) -> int:
     ratio = round(votes/total_votes, 3) # maybe do 2 sig figs
-    return int(ratio * NUMBER_CONSTITUENCIES)
+    return int(ratio * NUMBER_CONSTITUENCIES), ratio
 
-england_weights = _generateWeights(len(EnglandParties))
-scotland_weights = _generateWeights(len(ScotlandParties))
-wales_weights = _generateWeights(len(WalesParties))
-nIreland_weights = _generateWeights(len(NIrelandParties))
+parties = lambda Parties: [party.name for party in Parties]
 
-england_parties = [party.name for party in EnglandParties]
-scotland_parties = [party.name for party in ScotlandParties]
-wales_parties = [party.name for party in WalesParties]
-nIreland_parties = [party.name for party in NIrelandParties]
+england_parties = parties(EnglandParties)
+scotland_parties = parties(ScotlandParties)
+wales_parties = parties(WalesParties)
+nIreland_parties = parties(NIrelandParties)
 
 popular_vote = {party:0 for party in all_parties}
+seat_share = {party:0 for party in all_parties}
 
+print("Starting simulation...")
 start_time = time.time()
 # England
 for constituency in england_constituencies:
-    turnout = round(random.uniform(0.5, 0.8), 2)
+    turnout = round(random.uniform(TURNOUT_LOWER_BOUND, TURNOUT_UPPER_BOUND), 2)
+    england_constituency_weights = _generateWeights(len(EnglandParties))
     for voter in range(int(VOTES_PER_CONSTITUENCY * turnout)):
-        popular_vote[_generateVote(england_parties, england_weights)] += 1
+        popular_vote[_generateVote(england_parties, england_constituency_weights)] += 1
 print("England Counted")
 
 # Scotland
 for constituency in scotland_constituencies:
-    turnout = round(random.uniform(0.5, 0.8), 2)
+    turnout = round(random.uniform(TURNOUT_LOWER_BOUND, TURNOUT_UPPER_BOUND), 2)
+    scotland_constituency_weights = _generateWeights(len(ScotlandParties))
     for voter in range(int(VOTES_PER_CONSTITUENCY * turnout)):
-        popular_vote[_generateVote(scotland_parties, scotland_weights)] += 1
+        popular_vote[_generateVote(scotland_parties, scotland_constituency_weights)] += 1
 print("Scotland Counted")
 
 # Wales
 for constituency in wales_constituencies:
-    turnout = round(random.uniform(0.5, 0.8), 2)
+    turnout = round(random.uniform(TURNOUT_LOWER_BOUND, TURNOUT_UPPER_BOUND), 2)
+    wales_constituency_weights = _generateWeights(len(WalesParties))
     for voter in range(int(VOTES_PER_CONSTITUENCY * turnout)):
-        popular_vote[_generateVote(wales_parties, wales_weights)] += 1      
+        popular_vote[_generateVote(wales_parties, wales_constituency_weights)] += 1      
 print("Wales Counted")
 
 # Northern Ireland
 for constituency in nIreland_constituencies:
-    turnout = round(random.uniform(0.5, 0.8), 2)
+    turnout = round(random.uniform(TURNOUT_LOWER_BOUND, TURNOUT_UPPER_BOUND), 2)
+    nIreland_constituency_weights = _generateWeights(len(NIrelandParties))
     for voter in range(int(VOTES_PER_CONSTITUENCY * turnout)):
-        popular_vote[_generateVote(nIreland_parties, nIreland_weights)] += 1
+        popular_vote[_generateVote(nIreland_parties, nIreland_constituency_weights)] += 1
 print("Northern Ireland Counted\n")
 
 # Distribute votes
@@ -97,12 +104,31 @@ for party, vote_count in popular_vote.items():
     total_votes += vote_count
 
 elected_seats = 0
+party_ratio_seats = []
 for party in all_parties:
-    seats = _generateSeats(popular_vote[party], total_votes)
+    seats, ratio = _generateSeats(popular_vote[party], total_votes)
     elected_seats += seats
-    print(f"{party} get {seats} seats")
-print("Seats Elected: ", elected_seats)
+    seat_share[party] += seats
+    party_ratio_seats.append([party, ratio, seats])
 
-print(f"Turnout is {round(total_votes/(NUMBER_CONSTITUENCIES*VOTES_PER_CONSTITUENCY), 2)}%")
+if elected_seats > NUMBER_CONSTITUENCIES:
+    print(f"Problem with seat share calculation, elected seats {elected_seats} > {NUMBER_CONSTITUENCIES}")
+    exit(-1)
+elif elected_seats < NUMBER_CONSTITUENCIES: 
+    parties_to_adjust = []
+    while len(parties_to_adjust) != NUMBER_CONSTITUENCIES - elected_seats:
+        for party_share in party_ratio_seats:
+            seats_float = party_share[1] * NUMBER_CONSTITUENCIES
+            if seats_float - int(seats_float) >= 0.5:
+                parties_to_adjust.append(party_share[0])
+    for party in parties_to_adjust:
+        seat_share[party] += 1
+        elected_seats += 1
+
+
 end_time = time.time()
-print(f"Simulation time was: {round(end_time-start_time, 2)} seconds. Goodbye!")
+print(f"Seats elected: {elected_seats}\n")
+for party, seats in seat_share.items():
+    print(f"{party.replace('_', ' ')} gets {seats} seats")
+print(f"Turnout is {round(total_votes/(NUMBER_CONSTITUENCIES*VOTES_PER_CONSTITUENCY) * 100, 2)}%")
+print(f"Simulation time was: {round(end_time-start_time, 2)} seconds.\nGoodbye!")

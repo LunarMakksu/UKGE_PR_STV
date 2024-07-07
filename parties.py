@@ -5,25 +5,25 @@ class EnglandParties(IntEnum): # 3 seats per constituency
     Labour = 2
     Liberal_Democrats = 3
     Reform_UK = 4
-    Green = 5
+    Green_Party = 5
     Independant = 6
 
 class ScotlandParties(IntEnum):
-    Conservative = 1
-    Labour = 2
-    Liberal_Democrats = 3
-    Reform_UK = 4
-    Green = 5
-    Independant = 6
+    Scottish_Conservative = 1
+    Scottish_Labour = 2
+    Scottish_Liberal_Democrats = 3
+    Scottish_Reform_UK = 4
+    Scottish_Green_Party = 5
+    Scottish_Independant = 6
     SNP = 7
 
 class WalesParties(IntEnum):
-    Conservative = 1
-    Labour = 2
-    Liberal_Democrats = 3
-    Reform_UK = 4
-    Green = 5
-    Independant = 6
+    Welsh_Conservative = 1
+    Welsh_Labour = 2
+    Welsh_Liberal_Democrats = 3
+    Welsh_Reform_UK = 4
+    Welsh_Green_Party = 5
+    Welsh_Independant = 6
     Plaid_Cymru = 7
 
 class NIrelandParties(IntEnum): # theres more
